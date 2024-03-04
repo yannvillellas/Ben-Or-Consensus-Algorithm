@@ -33,10 +33,11 @@ For this step you will need to make use of the ressources provided in the `READM
 
 There are a few constraints you should keep in mind to validate the different tests:
 
-- Nodes always start with an initial state that is provided as a parameter of the `node` function
-- Nodes communicate through POST HTTP request with the `/message` route which you should implement.
-- Nodes should start the algorithm when they receive a GET HTTP request to the `/start` route 
-- if the `/stop` GET HTTP route is called on a node, it should stop any activity (this is to prevent any errors in the tests)
+- Nodes listen to request on the port defined by `BASE_NODE_PORT` + nodeId, which for the basic configuration, means that node #0 will have the port 3000, #1 the port 3001, etc,
+- Nodes always start with an initial state that is provided as a parameter of the `node` function,
+- Nodes communicate through POST HTTP request with the `/message` route which you should implement,
+- Nodes should start the algorithm when they receive a GET HTTP request to the `/start` route,
+- if the `/stop` GET HTTP route is called on a node, it should stop any activity (this is to prevent any errors in the tests),
 
 ## 3. Hidden tests
 
