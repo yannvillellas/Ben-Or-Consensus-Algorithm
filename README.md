@@ -15,7 +15,7 @@ To complete this exercise, you will need to dive into the inner workings of the 
 
 ## Setting up the project
 
-You will first need to install the dependencies of the project by running `yarn install` at the root of the project.
+You will first need to install the dependencies of the project by running `yarn` at the root of the project.
 
 Note that the only required dependencies are already specified and no other package should be installed to complete this exercise.
 
