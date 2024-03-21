@@ -2,6 +2,7 @@ import bodyParser from "body-parser";
 import express, { Request, Response } from "express";
 import { BASE_NODE_PORT } from "../config";
 import { Value, NodeState } from "../types";
+import { sendMessageToAll, consensusStep1, consensusStep2 } from "../functions";
 import { delay } from "../utils";
 
 export async function node(
@@ -32,7 +33,7 @@ export async function node(
 
   let messagesStep1: Map<number, Value[]> = new Map();
   let messagesStep2: Map<number, Value[]> = new Map();
-
+  
   node.get("/status", (req, res) => {
     if (isFaulty) {
       return res.status(500).send("faulty");
@@ -40,7 +41,7 @@ export async function node(
       return res.status(200).send("live");
     }
   });
-
+  
   node.get("/getState", (req, res) => {
     if (isFaulty) {
       res.status(200).json(state);
@@ -56,7 +57,7 @@ export async function node(
       }
     }
   });
-
+  
   node.post("/message", (req: Request, res: Response) => {
     if (!isFaulty) {
       let { x, k, step } = req.body;
@@ -67,25 +68,20 @@ export async function node(
         }
         messagesStep1.get(k)!.push(x);
         if (messagesStep1.get(k)!.length >= N - F) {
-          const newStateValue = consensusStep1(messagesStep1.get(k)!, state, N);
-          if (newStateValue !== state.x) {
-            state.x = newStateValue;
-            sendMessageToAll(2, state, N);
-          }
+          state.x = consensusStep1(messagesStep1.get(k)!, state, N);
+          sendMessageToAll(2, state, N);
         }
       }
+
       if (step === 2 && !state.decided && !state.killed) {
         if (!messagesStep2.has(k)) {
           messagesStep2.set(k, []);
         }
         messagesStep2.get(k)!.push(x);
         if (messagesStep2.get(k)!.length >= N - F) {
-          const newStateValue = consensusStep2(messagesStep2.get(k)!, state, F);
-          if (newStateValue !== state.x) {
-            state.x = newStateValue;
-            state.k! += 1;
-            sendMessageToAll(1, state, N);
-          }
+          consensusStep2(messagesStep2.get(k)!, state, F);
+          state.k = state.k! + 1;
+          sendMessageToAll(1, state, N);
         }
       }
     }
@@ -112,8 +108,6 @@ export async function node(
     console.log(
       `Node ${nodeId} is listening on port ${BASE_NODE_PORT + nodeId}`
     );
-
-    // the node is ready
     setNodeIsReady(nodeId);
   });
 
@@ -121,23 +115,42 @@ export async function node(
 }
 
 function consensusStep1(messages: Value[], state: NodeState, N: number) {
-  const count0 = messages.filter((el) => el === 0).length;
-  const count1 = messages.filter((el) => el === 1).length;
-  state.x = 2 * count0 > N ? 0 : 2 * count1 > N ? 1 : "?";
+  let count0 = messages.filter((el) => el === 0).length;
+  let count1 = messages.filter((el) => el === 1).length;
+  if (2 * count0 > N) {
+    state.x = 0;
+  }
+
+  else if (2 * count1 > N) {
+    state.x = 1;
+  }
+  else {
+    state.x = "?";
+  }
   return state.x;
 }
 
-function consensusStep2(messages: Value[], state: NodeState, F: number) {
-  const count0 = messages.filter((el) => el === 0).length;
-  const count1 = messages.filter((el) => el === 1).length;
+function consensusStep2(messsages: Value[], state: NodeState, F: number) {
+  let count0 = messsages.filter((el) => el === 0).length;
+  let count1 = messsages.filter((el) => el === 1).length;
   if (count0 > F) {
     state.decided = true;
     state.x = 0;
-  } else if (count1 > F) {
+  }
+  else if (count1 > F) {
     state.decided = true;
     state.x = 1;
-  } else {
-    state.x = count0 > count1 ? 0 : count1 > count0 ? 1 : null;
+  }
+  else {
+    if (count0 + count1 > 0 && count0 > count1) {
+      state.x = 0;
+    }
+    else if (count0 + count1 > 0 && count1 > count0) {
+      state.x = 1;
+    }
+    else {
+      state.x = Math.floor(Math.random() * 2) ? 0 : 1;
+    }
   }
   return state.x;
 }
