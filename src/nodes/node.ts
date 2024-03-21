@@ -2,7 +2,6 @@ import bodyParser from "body-parser";
 import express, { Request, Response } from "express";
 import { BASE_NODE_PORT } from "../config";
 import { Value, NodeState } from "../types";
-import { sendMessageToAll, consensusStep1, consensusStep2 } from "../functions";
 import { delay } from "../utils";
 
 export async function node(
