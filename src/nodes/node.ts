@@ -67,7 +67,7 @@ export async function node(
         }
         messagesStep1.get(k)!.push(x);
         if (messagesStep1.get(k)!.length >= N - F) {
-          const newStateValue = consensus(messagesStep1.get(k)!, state, step, N, undefined);
+          const newStateValue = consensusStep1(messagesStep1.get(k)!, state, N);
           if (newStateValue !== state.x) {
             state.x = newStateValue;
             sendMessageToAll(2, state, N);
@@ -80,7 +80,7 @@ export async function node(
         }
         messagesStep2.get(k)!.push(x);
         if (messagesStep2.get(k)!.length >= N - F) {
-          const newStateValue = consensus(messagesStep2.get(k)!, state, step, undefined, F);
+          const newStateValue = consensusStep2(messagesStep2.get(k)!, state, F);
           if (newStateValue !== state.x) {
             state.x = newStateValue;
             state.k! += 1;
@@ -120,51 +120,26 @@ export async function node(
   return server;
 }
 
-function consensus(messages: Value[], state: NodeState,step: number, N?:number, F?:number ) {
-  let newStateValue = state.x;
-  let count0 = messages.filter((el) => el === 0).length;
-  let count1 = messages.filter((el) => el === 1).length;
-  if (step ===1)
-  {
-    if (N === undefined) {
-      throw new Error("Parameter N is required for step 1.");
-    }
-    if (2 * count0 > N) {
-      newStateValue = 0;
-    }
-    else if (2 * count1 > N) {
-      newStateValue = 1;
-    }
-    else {
-      newStateValue = "?";
-    }
+function consensusStep1(messages: Value[], state: NodeState, N: number) {
+  const count0 = messages.filter((el) => el === 0).length;
+  const count1 = messages.filter((el) => el === 1).length;
+  state.x = 2 * count0 > N ? 0 : 2 * count1 > N ? 1 : "?";
+  return state.x;
+}
+
+function consensusStep2(messages: Value[], state: NodeState, F: number) {
+  const count0 = messages.filter((el) => el === 0).length;
+  const count1 = messages.filter((el) => el === 1).length;
+  if (count0 > F) {
+    state.decided = true;
+    state.x = 0;
+  } else if (count1 > F) {
+    state.decided = true;
+    state.x = 1;
+  } else {
+    state.x = count0 > count1 ? 0 : count1 > count0 ? 1 : null;
   }
-  else if (step ===2)
-  {
-    if (F === undefined) {
-      throw new Error("Parameter F is required for step 2.");
-    }
-    if (count0 > F) {
-      state.decided = true;
-      newStateValue = 0;
-    }
-    else if (count1 > F) {
-      state.decided = true;
-      newStateValue = 1;
-    }
-    else {
-      if (count0 + count1 > 0 && count0 > count1) {
-        newStateValue = 0;
-      }
-      else if (count0 + count1 > 0 && count1 > count0) {
-        newStateValue = 1;
-      }
-      else {
-        newStateValue = Math.floor(Math.random() * 2) ? 0 : 1;
-      }
-    }
-  }
-  return newStateValue;
+  return state.x;
 }
 
 function sendMessage(destinationNodeId: number, step: number, state: NodeState) {
